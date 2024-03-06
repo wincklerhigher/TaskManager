@@ -12,7 +12,7 @@ const App = () => {
   const [prazo, setPrazo] = useState(new Date());
   const [prioridade, setPrioridade] = useState('');
   const [tarefas, setTarefas] = useState([
-    { id: 1, descricao: 'Fazer compras', prazo: '2024-03-10', prioridade: 'Alta', completed: false },
+    { id: 1, descricao: 'Atividades', prazo: '2024-03-10', prioridade: 'Alta', completed: false },
   ]);  
   const [mostrarModal, setMostrarModal] = useState(false);  
   const [editarModo, setEditarModo] = useState(false);
@@ -32,7 +32,7 @@ const App = () => {
         }
       );
     });
-  }, []);
+  }, []);  
 
   useEffect(() => {
     if (edicaoRealizada) {
@@ -110,22 +110,17 @@ const App = () => {
   };  
 
   const HandleSalvarEdicao = () => {
-    if (descricao && prazo && prioridade) {
-      // Atualizar a tarefa com os novos detalhes
+    if (descricao && prazo && prioridade) {      
       const tarefasAtualizadas = tarefas.map(tarefa => {
         if (tarefa.id === idTarefaEditando) {
           return { ...tarefa, descricao, prazo, prioridade };
         }
         return tarefa;
       });
-  
-      // Atualizar o estado das tarefas
-      setTarefas(tarefasAtualizadas);
-  
-      // Marcar que a edição foi realizada
+        
+      setTarefas(tarefasAtualizadas);    
       setEdicaoRealizada(true);
-  
-      // Desativar o modo de edição e limpar os campos
+        
       setEditarModo(false);
       setIdTarefaEditando(null);
       setDescricao('');

@@ -24,6 +24,7 @@ const carregarTarefas = (setTarefas) => {
       [],
       (_, { rows }) => {
         const dadosTarefas = rows.raw();
+        console.log('Tarefas carregadas:', dadosTarefas);
         setTarefas(dadosTarefas);
       },
       (_, error) => {
@@ -34,16 +35,24 @@ const carregarTarefas = (setTarefas) => {
 };
 
 const salvarTarefas = (tarefas) => {
-    db.transaction((tx) => {
-      tx.executeSql('DELETE FROM tarefas');
-      tarefas.forEach(tarefa => {
-        tx.executeSql(
-          'INSERT INTO tarefas (descricao, prazo, prioridade, concluido) VALUES (?, ?, ?, ?)',
-          [tarefa.descricao, tarefa.prazo, tarefa.prioridade, tarefa.concluido ? 1 : 0]
-        );
-      });
+  db.transaction((tx) => {
+    tx.executeSql('DELETE FROM tarefas', [], () => {
+      console.log('Todas as tarefas foram removidas do banco de dados.');
     });
-  };  
+    tarefas.forEach(tarefa => {
+      tx.executeSql(
+        'INSERT INTO tarefas (descricao, prazo, prioridade, concluido) VALUES (?, ?, ?, ?)',
+        [tarefa.descricao, tarefa.prazo, tarefa.prioridade, tarefa.concluido ? 1 : 0],
+        () => {
+          console.log('Tarefa salva no banco de dados:', tarefa);
+        },
+        (_, error) => {
+          console.error('Erro ao salvar tarefa no banco de dados:', error);
+        }
+      );
+    });
+  });
+};
 
-  
+
 export { inicializarBancoDeDados, carregarTarefas, salvarTarefas };
