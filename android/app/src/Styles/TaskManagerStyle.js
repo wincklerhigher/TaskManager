@@ -21,58 +21,62 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderRadius: 5,
     marginTop: 15,
-  },
+    fontSize: 18, 
+    shadowColor: '#000', 
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },      
   taskContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
+    flexDirection: 'column', 
     padding: 10,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: 'lightgrey',
     borderRadius: 5,
+    backgroundColor: 'white', 
+    shadowColor: '#000', 
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+  completedTask: {
+    backgroundColor: 'lightgreen', 
   },
-  modalView: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 35,
+  buttonContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between', 
+    marginTop: 10,
+    paddingHorizontal: 10, 
+  },
+  button: {
+    fontSize: 16, 
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+    borderRadius: 5, 
+    paddingHorizontal: 10, 
   },
-  button: {
-    borderRadius: 20,
-    padding: 10,
-    elevation: 2,
-    marginTop: 10,
-  },
-  buttonOpen: {
-    backgroundColor: '#F194FF',
-  },
-  buttonClose: {
-    backgroundColor: '#2196F3',
-  },
-  textStyle: {
-    color: 'white',
+  taskDescription: {
+    marginBottom: 5,
+    fontSize: 14,
     fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  modalText: {
-    marginBottom: 15,
-    textAlign: 'center',
   }, 
 });
+
 
 export default styles;

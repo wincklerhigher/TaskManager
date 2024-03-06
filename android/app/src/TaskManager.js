@@ -1,77 +1,182 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, FlatList, Alert, Modal } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Importe AsyncStorage
-import moment from 'moment'; 
+import SQLite from 'react-native-sqlite-storage';
+import moment from 'moment';
 import { Calendar } from 'react-native-calendars';
 import styles from './Styles/TaskManagerStyle';
 
+const db = SQLite.openDatabase({ name: 'tarefas.db', location: 'default' });
+
 const App = () => {
-  const [description, setDescription] = useState('');
-  const [deadline, setDeadline] = useState(new Date());
-  const [priority, setPriority] = useState('');
-  const [tasks, setTasks] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [currentDate, setCurrentDate] = useState(moment().format('YYYY-MM-DD'));
+  const [descricao, setDescricao] = useState('');
+  const [prazo, setPrazo] = useState(new Date());
+  const [prioridade, setPrioridade] = useState('');
+  const [tarefas, setTarefas] = useState([
+    { id: 1, descricao: 'Fazer compras', prazo: '2024-03-10', prioridade: 'Alta', completed: false },
+  ]);  
+  const [mostrarModal, setMostrarModal] = useState(false);  
+  const [editarModo, setEditarModo] = useState(false);
+  const [idTarefaEditando, setIdTarefaEditando] = useState(null);  
+  const [edicaoRealizada, setEdicaoRealizada] = useState(false);  
 
   useEffect(() => {
-    const loadTasks = async () => {
-      try {
-        const tasksData = await AsyncStorage.getItem('tasks');
-        if (tasksData !== null) {
-          setTasks(JSON.parse(tasksData));
+    db.transaction((tx) => {
+      tx.executeSql(
+        'CREATE TABLE IF NOT EXISTS tarefas (id INTEGER PRIMARY KEY AUTOINCREMENT, descricao TEXT, prazo TEXT, prioridade TEXT, completed INTEGER)',
+        [],
+        () => {
+          carregarTarefas();
+        },
+        (_, error) => {
+          console.error('Erro ao criar tabela de tarefas:', error);
         }
-      } catch (error) {
-        console.error('Erro ao carregar tarefas:', error);
-      }
-    };
-
-    loadTasks();
+      );
+    });
   }, []);
 
-  const saveTasksToStorage = async (tasks) => {
-    try {
-      await AsyncStorage.setItem('tasks', JSON.stringify(tasks));
-    } catch (error) {
-      console.error('Erro ao salvar tarefas:', error);
+  useEffect(() => {
+    if (edicaoRealizada) {
+      salvarTarefasNoBancoDeDados(tarefas);
+      mostrarAlerta('Tarefa editada com sucesso!');
+      setEdicaoRealizada(false);
     }
+  }, [edicaoRealizada]);
+
+  const carregarTarefas = () => {
+    db.transaction((tx) => {
+      tx.executeSql(
+        'SELECT * FROM tarefas',
+        [],
+        (_, { rows }) => {
+          const dadosTarefas = rows.raw();
+          setTarefas(dadosTarefas);
+        },
+        (_, error) => {
+          console.error('Erro ao carregar tarefas:', error);
+        }
+      );
+    });
   };
 
-  const handleAddTask = async () => {
-    if (description && deadline && priority) {
-      const newTask = { id: Date.now(), description, deadline, priority, completed: false };
-      const updatedTasks = [...tasks, newTask];
-      setTasks(updatedTasks);
-      await saveTasksToStorage(updatedTasks);
-      setDescription('');
-      setPriority('');
-      showAlert('Tarefa adicionada com sucesso!');
+  const salvarTarefasNoBancoDeDados = (tarefas) => {
+    db.transaction((tx) => {
+      tx.executeSql('DELETE FROM tarefas');
+      tarefas.forEach(tarefa => {
+        const { descricao, prazo, prioridade, completed } = tarefa;
+        const completedInt = completed ? 1 : 0;
+        tx.executeSql(
+          'INSERT INTO tarefas (descricao, prazo, prioridade, completed) VALUES (?, ?, ?, ?)',
+          [String(descricao), String(prazo), String(prioridade), String(completedInt)]
+        );
+      });
+    });
+  };  
+
+  const HandleAdicionarTarefa = () => {
+    if (descricao && prazo && prioridade) {
+      const novaTarefa = { id: tarefas.length + 1, descricao, prazo, prioridade, completed: false }; 
+      const tarefasAtualizadas = [...tarefas, novaTarefa];
+      setTarefas(tarefasAtualizadas);
+      salvarTarefasNoBancoDeDados(tarefasAtualizadas);
+      setDescricao('');
+      setPrioridade('');
+      mostrarAlerta('Tarefa adicionada  sucesso!');
     } else {
-      showAlert('Por favor, preencha todos os campos.');
+      mostrarAlerta('Por favor, preencha todos os campos.');
     }
   };
 
-  const handleDeleteTask = async (taskId) => {
-    const updatedTasks = tasks.filter(task => task.id !== taskId);
-    setTasks(updatedTasks);
-    await saveTasksToStorage(updatedTasks);
-    showAlert('Tarefa excluída com sucesso!');
+  const HandleDeletarTarefa = (idTarefa) => {
+    const tarefasAtualizadas = tarefas.filter(tarefa => tarefa.id !== idTarefa);
+    setTarefas(tarefasAtualizadas);
+    salvarTarefasNoBancoDeDados(tarefasAtualizadas);
+    mostrarAlerta('Tarefa excluída  sucesso!');
   };
 
-  const showAlert = (message) => {
-    Alert.alert('Alerta', message);
+  const HandleEditarTarefa = (idTarefa) => {  
+    const tarefaEditar = tarefas.find(tarefa => tarefa.id === idTarefa);
+      
+    if (!tarefaEditar) {
+      mostrarAlerta('Tarefa não encontrada para edição.');
+      return;
+    }
+        
+    setEditarModo(true);
+    setIdTarefaEditando(idTarefa);
+        
+    setDescricao(tarefaEditar.descricao);
+    setPrazo(new Date(tarefaEditar.prazo));
+    setPrioridade(tarefaEditar.prioridade);
+  };  
+
+  const HandleSalvarEdicao = () => {
+    if (descricao && prazo && prioridade) {
+      // Atualizar a tarefa com os novos detalhes
+      const tarefasAtualizadas = tarefas.map(tarefa => {
+        if (tarefa.id === idTarefaEditando) {
+          return { ...tarefa, descricao, prazo, prioridade };
+        }
+        return tarefa;
+      });
+  
+      // Atualizar o estado das tarefas
+      setTarefas(tarefasAtualizadas);
+  
+      // Marcar que a edição foi realizada
+      setEdicaoRealizada(true);
+  
+      // Desativar o modo de edição e limpar os campos
+      setEditarModo(false);
+      setIdTarefaEditando(null);
+      setDescricao('');
+      setPrioridade('');
+    } else {
+      mostrarAlerta('Por favor, preencha todos os campos.');
+    }
+  }; 
+
+  const botaoSalvarEdicao = (
+    <Button title="Salvar Edição" onPress={HandleSalvarEdicao} />
+  );  
+
+  const HandleContinuarTarefa = (idTarefa) => {
+    const tarefasAtualizadas = tarefas.map(tarefa => {
+      if (tarefa.id === idTarefa) {
+        return { ...tarefa, completed: false };
+      }
+      return tarefa;
+    });
+    setTarefas(tarefasAtualizadas);    
+    mostrarAlerta('Tarefa continuada  sucesso!');
   };
 
-  const showDatePicker = () => {
-    setShowModal(true);
+  const HandleFinalizarTarefa = (idTarefa) => {
+    const tarefasAtualizadas = tarefas.map(tarefa => {
+      if (tarefa.id === idTarefa) {
+        return { ...tarefa, completed: true };
+      }
+      return tarefa;
+    });
+    setTarefas(tarefasAtualizadas);
+    salvarTarefasNoBancoDeDados(tarefasAtualizadas);
+    mostrarAlerta('Tarefa finalizada  sucesso!');
+  };  
+
+  const mostrarAlerta = (mensagem) => {
+    Alert.alert('Alerta', mensagem);
   };
 
-  const hideDatePicker = () => {
-    setShowModal(false);
+  const mostrarSelecionadorDeData = () => {
+    setMostrarModal(true);
   };
 
-  const handleDateChange = (date) => {
-    setDeadline(date);
-    hideDatePicker();
+  const esconderSelecionadorDeData = () => {
+    setMostrarModal(false);
+  };
+
+  const HandleMudancaDeData = (data) => {
+    setPrazo(data);
+    esconderSelecionadorDeData();
   };
 
   return (
@@ -81,53 +186,61 @@ const App = () => {
         <TextInput
           style={styles.input}
           placeholder="Descrição"
-          value={description}
-          onChangeText={setDescription}
+          value={descricao}
+          onChangeText={setDescricao}
         />
-        <Button title="Selecionar Data de Término" onPress={showDatePicker} />
+        <Button title="Selecionar Prazo" onPress={mostrarSelecionadorDeData} />
         <Modal
           animationType="slide"
           transparent={true}
-          visible={showModal}
-          onRequestClose={hideDatePicker}
+          visible={mostrarModal}
+          onRequestClose={esconderSelecionadorDeData}
         >
-          <View style={styles.modalContainer}>
+          <View style={styles.containerModal}>
             <Calendar
-              current={moment(deadline).format('YYYY-MM-DD')} 
-              onDayPress={(day) => handleDateChange(day.dateString)}
+              current={moment(prazo).format('YYYY-MM-DD')} 
+              onDayPress={(dia) => HandleMudancaDeData(dia.dateString)}
             />
-            <Button title="Cancelar" onPress={hideDatePicker} />
+            <Button title="Cancelar" onPress={esconderSelecionadorDeData} />
           </View>
         </Modal>
         <TextInput
           style={styles.input}
           placeholder="Prioridade"
-          value={priority}
-          onChangeText={setPriority}
+          value={prioridade}
+          onChangeText={setPrioridade}
           keyboardType="numeric"
-        />
-        <Button title="Adicionar Tarefa" onPress={handleAddTask} />
-      </View>
-      <FlatList
-        data={tasks}
-        keyExtractor={(item, index) => {
-          if (item && item.id) {
-          return item.id.toString();
-        } else {
-          return index.toString(); 
-        }
-        }}
-        renderItem={({ item }) => (
-      <View style={styles.taskContainer}>
-      <Text>{item.description}</Text>
-      <Text>{moment(item.deadline).format('DD/MM/YYYY')}</Text>
-      <Text>{item.priority}</Text>
-      <Button title="Excluir" onPress={() => handleDeleteTask(item.id)} />
-      </View>
+        />        
+        {!editarModo && (
+          <Button title="Adicionar Tarefa" onPress={HandleAdicionarTarefa} />
         )}
-          />
+      </View> 
+      <FlatList
+        data={tarefas}
+        keyExtractor={(item, index) => (item && item.id ? item.id.toString() : index.toString())}
+        renderItem={({ item }) => (
+      <View style={[styles.taskContainer, item.completed && styles.completedTask]}>
+      <View>
+        <Text style={styles.taskDescription}>Descrição: {item.descricao}</Text>
+        <Text style={[styles.taskDescription ]}>Data: {moment(item.prazo).format('DD/MM/YYYY')}</Text>
+        <Text style={[styles.taskDescription ]}>Prioridade: {item.prioridade}</Text>
       </View>
+      <View style={styles.buttonContainer}>
+        <Button title="Excluir" onPress={() => HandleDeletarTarefa(item.id)} />   
+        {!editarModo && <Button title="Editar" onPress={() => HandleEditarTarefa(item.id)} />}
+        {editarModo && botaoSalvarEdicao}                   
+          {!item.completed ? (            
+            <Button title="Finalizar" onPress={() => HandleFinalizarTarefa(item.id)} />  
+          ) : (          
+            <Button title="Continuar" onPress={() => HandleContinuarTarefa(item.id)} />           
+          )}        
+      </View>
+    </View>
+    )}
+    />
+    </View>
   );
 };
+
 
 export default App;
