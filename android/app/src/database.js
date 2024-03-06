@@ -36,20 +36,24 @@ const carregarTarefas = (setTarefas) => {
 
 const salvarTarefas = (tarefas) => {
   db.transaction((tx) => {
-    tx.executeSql('DELETE FROM tarefas', [], () => {
-      console.log('Todas as tarefas foram removidas do banco de dados.');
-    });
     tarefas.forEach(tarefa => {
-      tx.executeSql(
-        'INSERT INTO tarefas (descricao, prazo, prioridade, concluido) VALUES (?, ?, ?, ?)',
-        [tarefa.descricao, tarefa.prazo, tarefa.prioridade, tarefa.concluido ? 1 : 0],
-        () => {
-          console.log('Tarefa salva no banco de dados:', tarefa);
-        },
-        (_, error) => {
-          console.error('Erro ao salvar tarefa no banco de dados:', error);
-        }
-      );
+      const { id, descricao, prazo, prioridade, concluido } = tarefa;
+      const concluidoInt = concluido ? 1 : 0;
+      if (id) {        
+        tx.executeSql(
+          'UPDATE tarefas SET descricao=?, prazo=?, prioridade=?, concluido=? WHERE id=?',
+          [descricao, prazo, prioridade, concluidoInt, id],
+          () => console.log('Tarefa atualizada no banco de dados:', tarefa),
+          (tx, error) => console.error('Erro ao atualizar tarefa no banco de dados:', error)
+        );
+      } else {        
+        tx.executeSql(
+          'INSERT INTO tarefas (descricao, prazo, prioridade, concluido) VALUES (?, ?, ?, ?)',
+          [descricao, prazo, prioridade, concluidoInt],
+          () => console.log('Tarefa inserida no banco de dados:', tarefa),
+          (tx, error) => console.error('Erro ao inserir tarefa no banco de dados:', error)
+        );
+      }
     });
   });
 };

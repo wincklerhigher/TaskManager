@@ -60,14 +60,24 @@ const App = () => {
 
   const salvarTarefasNoBancoDeDados = (tarefas) => {
     db.transaction((tx) => {
-      tx.executeSql('DELETE FROM tarefas');
       tarefas.forEach(tarefa => {
-        const { descricao, prazo, prioridade, completed } = tarefa;
+        const { id, descricao, prazo, prioridade, completed } = tarefa;
         const completedInt = completed ? 1 : 0;
-        tx.executeSql(
-          'INSERT INTO tarefas (descricao, prazo, prioridade, completed) VALUES (?, ?, ?, ?)',
-          [String(descricao), String(prazo), String(prioridade), String(completedInt)]
-        );
+        if (id) {          
+          tx.executeSql(
+            'UPDATE tarefas SET descricao=?, prazo=?, prioridade=?, concluido=? WHERE id=?',
+            [descricao, prazo, prioridade, concluidoInt, id],
+            () => console.log('Tarefa atualizada no banco de dados:', tarefa),
+            (_, error) => console.error('Erro ao atualizar tarefa no banco de dados:', error)
+          );
+        } else {          
+          tx.executeSql(
+            'INSERT INTO tarefas (descricao, prazo, prioridade, completed) VALUES (?, ?, ?, ?)',
+            [String(descricao), String(prazo), String(prioridade), String(completedInt)],
+            () => console.log('Tarefa inserida no banco de dados:', tarefa),
+            (_, error) => console.error('Erro ao inserir tarefa no banco de dados:', error)
+          );
+        }
       });
     });
   };  
