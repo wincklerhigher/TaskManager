@@ -17,20 +17,16 @@ const inicializarBancoDeDados = () => {
   });
 };
 
-const carregarTarefas = (setTarefas) => {
-  db.transaction((tx) => {
-    tx.executeSql(
-      'SELECT * FROM tarefas',
-      [],
-      (_, { rows }) => {
-        const dadosTarefas = rows.raw();
-        console.log('Tarefas carregadas:', dadosTarefas);
-        setTarefas(dadosTarefas);
-      },
-      (_, error) => {
-        console.error('Erro ao carregar tarefas:', error);
-      }
-    );
+const getAllTransactions = () => {
+  return new Promise((resolve, reject) => {
+    db.transaction(tx => {
+      tx.executeSql(
+        `SELECT * FROM tarefas;`,
+        [],
+        (_, { rows }) => resolve(rows._array),
+        (_, error) => reject(error)
+      );
+    });
   });
 };
 
@@ -59,4 +55,4 @@ const salvarTarefas = (tarefas) => {
 };
 
 
-export { inicializarBancoDeDados, carregarTarefas, salvarTarefas };
+export { inicializarBancoDeDados, getAllTransactions, salvarTarefas };
